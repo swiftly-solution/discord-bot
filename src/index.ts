@@ -3,6 +3,7 @@ import { ActivityType, Client } from "discord.js";
 import "dotenv/config";
 import { readdirSync } from "node:fs";
 import { RegisterCommands } from "./core/commands";
+import { mcpClient, mcpTransport } from "./core/docs";
 
 const botClient = new Client({
     intents: [
@@ -37,6 +38,8 @@ setTimeout(async () => {
             type: ActivityType.Watching,
             name: "https://swiftlys2.net",
         });
+
+        await mcpClient.connect(mcpTransport);
     } catch (err) {
         console.error(`[${chalk.red("Core")}] Failed to start bot!`);
         console.error(err);
