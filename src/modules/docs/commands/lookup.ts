@@ -179,6 +179,18 @@ export const command = async (interaction: ChatInputCommandInteraction) => {
                             .join(",");
                     }
                 }
+            } else if (category == "panorama") {
+                const lookupDescription = responseJSON.entry.description;
+                const formattedDescription = lookupDescription
+                    .replace(/<br>/g, "\n")
+                    .replace(/<b>/g, "**")
+                    .replace(/<\/b>/g, "**")
+                    .replace(/<pre>/g, "```css\n")
+                    .replace(/<\/pre>/g, "```")
+                    .replace(/&lt;/g, "<")
+                    .replace(/&gt;/g, ">");
+
+                description += formattedDescription;
             }
 
             await interaction.editReply({

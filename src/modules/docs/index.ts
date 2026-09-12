@@ -16,6 +16,7 @@ export const docsCategories = [
     { name: "Game Events", value: "gameevent" },
     { name: "NetMessages", value: "protobuf" },
     { name: "ConVars & ConCommands", value: "convar" },
+    { name: "Panorama", value: "panorama" },
 ];
 
 const buttons = new Collection<
