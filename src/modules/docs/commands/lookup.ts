@@ -207,9 +207,6 @@ export const command = async (interaction: ChatInputCommandInteraction) => {
             });
 
             return;
-        } catch (err) {
-            await mcpClient.close();
-            await mcpClient.connect(mcpTransport);
-        }
+        } catch (err) {}
     }
 };

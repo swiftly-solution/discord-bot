@@ -1,4 +1,10 @@
-import { AnySelectMenuInteraction, ButtonInteraction, CommandInteraction, Interaction, ModalSubmitInteraction } from "discord.js";
+import {
+    AnySelectMenuInteraction,
+    ButtonInteraction,
+    CommandInteraction,
+    Interaction,
+    ModalSubmitInteraction,
+} from "discord.js";
 import { anymenus, buttons, localCommands, modals } from "..";
 
 export const type = "on";
@@ -15,14 +21,23 @@ export const task = async (interaction: Interaction) => {
         } else if (interaction.isModalSubmit()) {
             const modal = modals.get(interaction.customId);
             if (!modal) return;
-            await modal(interaction as ModalSubmitInteraction)
+            await modal(interaction as ModalSubmitInteraction);
         } else if (interaction.isAnySelectMenu()) {
             const menu = anymenus.get(interaction.customId);
             if (!menu) return;
-            await menu(interaction as AnySelectMenuInteraction)
+            await menu(interaction as AnySelectMenuInteraction);
         }
     } catch (err) {
         console.log(err);
-        (interaction as CommandInteraction).reply({ content: `An error has been occured, please try again.`, ephemeral: true })
+        if ((interaction as CommandInteraction).replied) {
+            (interaction as CommandInteraction).editReply({
+                content: `An error has been occured, please try again.`,
+            });
+        } else {
+            (interaction as CommandInteraction).reply({
+                content: `An error has been occured, please try again.`,
+                ephemeral: true,
+            });
+        }
     }
-}
+};
