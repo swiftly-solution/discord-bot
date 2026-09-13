@@ -1,10 +1,9 @@
 import {
     ChatInputCommandInteraction,
     InteractionContextType,
-    PermissionFlagsBits,
     SlashCommandBuilder,
 } from "discord.js";
-import { mcpClient, mcpTransport } from "../../../core/docs";
+import { mcpClient } from "../../../core/docs";
 import { docsCategories } from "..";
 import { formatDate } from "../../../core/time";
 import { capitalizeFirstLetter } from "../../../core/strings";
@@ -82,34 +81,38 @@ export const command = async (interaction: ChatInputCommandInteraction) => {
                     {},
                 );
 
-                for (const [module, items] of Object.entries(byModules)) {
+                for (const [module, itms] of Object.entries(byModules)) {
                     description += `**Module - ${module}**\n`;
-                    for (const entry of items) {
+                    for (const entry of itms) {
                         description += `[${entry.name}](${entry.url}) - ${capitalizeFirstLetter(entry.kind)}\n`;
                     }
                 }
             } else if (category == "entity") {
                 if (responseJSON.classes.length > 0) {
+                    const items = responseJSON.classes.slice(0, 25);
                     description += `**Classes**\n`;
-                    for (const entry of responseJSON.classes) {
+                    for (const entry of items) {
                         description += `[${entry.name}](${entry.url})\n`;
                     }
                     description += `\n`;
                 }
                 if (responseJSON.fields.length > 0) {
+                    const items = responseJSON.fields.slice(0, 25);
                     description += `**Fields**\n`;
-                    for (const entry of responseJSON.fields) {
+                    for (const entry of items) {
                         description += `[${entry.className}::${entry.fieldName}](${entry.url})\n`;
                     }
                 }
             } else if (category == "gameevent") {
+                const items = responseJSON.slice(0, 25);
                 description += `**Results**\n`;
-                for (const entry of responseJSON) {
+                for (const entry of items) {
                     description += `[${entry.name}](${entry.url}) - ${entry.files.map((v: string) => `\`${v}\``).join(", ")}\n`;
                 }
             } else if (category == "protobuf") {
+                const items = responseJSON.slice(0, 25);
                 description += `**Results**\n`;
-                for (const entry of responseJSON) {
+                for (const entry of items) {
                     description += `[${entry.name}](${entry.url}) - ${capitalizeFirstLetter(entry.kind)}\n`;
                 }
             } else if (category == "convar") {
@@ -125,15 +128,16 @@ export const command = async (interaction: ChatInputCommandInteraction) => {
                     {},
                 );
 
-                for (const [module, items] of Object.entries(byModules)) {
+                for (const [module, itms] of Object.entries(byModules)) {
                     description += `**Module - ${module}**\n`;
-                    for (const entry of items) {
+                    for (const entry of itms) {
                         description += `[${entry.name}](${entry.url}) - ${capitalizeFirstLetter(entry.kind)}\n`;
                     }
                 }
             } else if (category == "panorama") {
+                const items = responseJSON.slice(0, 25);
                 description += `**Results**\n`;
-                for (const entry of responseJSON) {
+                for (const entry of items) {
                     description += `[${entry.name}](${entry.url}) - ${entry.snippet}\n`;
                 }
             }

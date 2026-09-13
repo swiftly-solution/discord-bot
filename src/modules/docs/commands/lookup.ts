@@ -3,7 +3,7 @@ import {
     InteractionContextType,
     SlashCommandBuilder,
 } from "discord.js";
-import { mcpClient, mcpTransport } from "../../../core/docs";
+import { mcpClient } from "../../../core/docs";
 import { docsCategories } from "..";
 import { formatDate } from "../../../core/time";
 
