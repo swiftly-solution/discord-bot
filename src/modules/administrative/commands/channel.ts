@@ -19,7 +19,10 @@ export const data = new SlashCommandBuilder()
             .setName("channel")
             .setDescription("The channel to use")
             .setRequired(true)
-            .addChannelTypes(ChannelType.GuildText),
+            .addChannelTypes(
+                ChannelType.GuildText,
+                ChannelType.GuildAnnouncement,
+            ),
     )
     .addStringOption((option) =>
         option
