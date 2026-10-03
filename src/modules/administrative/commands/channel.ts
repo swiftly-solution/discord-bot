@@ -26,6 +26,8 @@ export const data = new SlashCommandBuilder()
             .setChoices(
                 { name: "Set Honeypot", value: "set-honeypot" },
                 { name: "Remove Honeypot", value: "remove-honeypot" },
+                { name: "Set Autopublish", value: "set-autopublish" },
+                { name: "Remove Autopublish", value: "remove-autopublish" },
                 { name: "Lock", value: "lock" },
                 { name: "Unlock", value: "unlock" },
             )
@@ -130,6 +132,98 @@ export const command = async (interaction: ChatInputCommandInteraction) => {
                 {
                     title: "Honeypot Removed",
                     description: `The channel ${textChannel} has been removed as a honeypot.`,
+                    color: 0x00feed,
+                },
+            ],
+        });
+    } else if (action == "set-autopublish") {
+        const channelId = textChannel.id;
+        const guildId = textChannel.guildId;
+
+        const channelsFound = await db
+            .select()
+            .from(channelRoles)
+            .where(
+                and(
+                    eq(channelRoles.channelId, channelId),
+                    eq(channelRoles.guildId, guildId),
+                    eq(channelRoles.role, "autopublish"),
+                ),
+            );
+
+        if (channelsFound.length > 0) {
+            await interaction.editReply({
+                embeds: [
+                    {
+                        title: "Autopublish Already Set",
+                        description: `The channel ${textChannel} is already set as an autopublish.`,
+                        color: 0xff0000,
+                    },
+                ],
+            });
+            return;
+        }
+
+        await db.insert(channelRoles).values({
+            channelId: channelId,
+            guildId: guildId,
+            createdAt: new Date(),
+            role: "autopublish",
+            id: crypto.randomUUID(),
+        });
+
+        await interaction.editReply({
+            embeds: [
+                {
+                    title: "Autopublish Set",
+                    description: `The channel ${textChannel} has been set as an autopublish.`,
+                    color: 0x00feed,
+                },
+            ],
+        });
+    } else if (action == "remove-autopublish") {
+        const channelId = textChannel.id;
+        const guildId = textChannel.guildId;
+
+        const channelsFound = await db
+            .select()
+            .from(channelRoles)
+            .where(
+                and(
+                    eq(channelRoles.channelId, channelId),
+                    eq(channelRoles.guildId, guildId),
+                    eq(channelRoles.role, "autopublish"),
+                ),
+            );
+
+        if (channelsFound.length == 0) {
+            await interaction.editReply({
+                embeds: [
+                    {
+                        title: "Autopublish Not Found",
+                        description: `The channel ${textChannel} is not set as an autopublish.`,
+                        color: 0xff0000,
+                    },
+                ],
+            });
+            return;
+        }
+
+        await db
+            .delete(channelRoles)
+            .where(
+                and(
+                    eq(channelRoles.channelId, channelId),
+                    eq(channelRoles.guildId, guildId),
+                    eq(channelRoles.role, "autopublish"),
+                ),
+            );
+
+        await interaction.editReply({
+            embeds: [
+                {
+                    title: "Autopublish Removed",
+                    description: `The channel ${textChannel} has been removed as an autopublish.`,
                     color: 0x00feed,
                 },
             ],
