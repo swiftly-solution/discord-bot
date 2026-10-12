@@ -22,6 +22,7 @@ export const data = new SlashCommandBuilder()
             .addChannelTypes(
                 ChannelType.GuildText,
                 ChannelType.GuildAnnouncement,
+                ChannelType.GuildForum,
             ),
     )
     .addStringOption((option) =>
@@ -31,6 +32,8 @@ export const data = new SlashCommandBuilder()
                 { name: "Remove Honeypot", value: "remove-honeypot" },
                 { name: "Set Autopublish", value: "set-autopublish" },
                 { name: "Remove Autopublish", value: "remove-autopublish" },
+                { name: "Set AI Forum", value: "set-forum" },
+                { name: "Remove AI Forum", value: "remove-forum" },
                 { name: "Lock", value: "lock" },
                 { name: "Unlock", value: "unlock" },
             )
@@ -227,6 +230,59 @@ export const command = async (interaction: ChatInputCommandInteraction) => {
                 {
                     title: "Autopublish Removed",
                     description: `The channel ${textChannel} has been removed as an autopublish.`,
+                    color: 0x00feed,
+                },
+            ],
+        });
+    } else if (action == "set-forum" || action == "remove-forum") {
+        const channelId = textChannel.id;
+        const guildId = textChannel.guildId;
+        const adding = action == "set-forum";
+        const where = and(
+            eq(channelRoles.channelId, channelId),
+            eq(channelRoles.guildId, guildId),
+            eq(channelRoles.role, "forum"),
+        );
+
+        const channelsFound = await db.select().from(channelRoles).where(where);
+        const exists = channelsFound.length > 0;
+
+        if (adding == exists) {
+            await interaction.editReply({
+                embeds: [
+                    {
+                        title: adding
+                            ? "AI Forum Already Set"
+                            : "AI Forum Not Found",
+                        description: adding
+                            ? `The channel ${textChannel} is already an AI forum.`
+                            : `The channel ${textChannel} is not an AI forum.`,
+                        color: 0xff0000,
+                    },
+                ],
+            });
+            return;
+        }
+
+        if (adding) {
+            await db.insert(channelRoles).values({
+                channelId: channelId,
+                guildId: guildId,
+                createdAt: new Date(),
+                role: "forum",
+                id: crypto.randomUUID(),
+            });
+        } else {
+            await db.delete(channelRoles).where(where);
+        }
+
+        await interaction.editReply({
+            embeds: [
+                {
+                    title: adding ? "AI Forum Set" : "AI Forum Removed",
+                    description: adding
+                        ? `The channel ${textChannel} has been set as an AI forum.`
+                        : `The channel ${textChannel} has been removed as an AI forum.`,
                     color: 0x00feed,
                 },
             ],
