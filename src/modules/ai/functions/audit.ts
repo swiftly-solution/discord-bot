@@ -83,7 +83,7 @@ export const parseVerdicts = (raw: string): Judge | null => {
     }
 };
 
-const JUDGE = `You are a strict fact checker. You get an EVIDENCE block (tool results and messages from the thread) and an ANSWER written by an assistant. List the concrete factual claims in the ANSWER (APIs, function or class names, versions, commands, links, behaviours). For each claim give a verdict: "supported" if the EVIDENCE confirms it, "unsupported" if the EVIDENCE does not confirm it, "opinion" for jokes, greetings, advice or opinions. Reply with JSON only: {"claims":[{"claim":"short text","verdict":"supported|unsupported|opinion"}]}`;
+export const JUDGE = `You are a strict fact checker. You get an EVIDENCE block (tool results and messages from the thread) and an ANSWER written by an assistant. List the concrete factual claims in the ANSWER (APIs, function or class names, versions, commands, links, behaviours). For each claim give a verdict: "supported" if the EVIDENCE confirms it, "unsupported" if the EVIDENCE does not confirm it, "opinion" for jokes, greetings, advice or opinions. Reply with JSON only: {"claims":[{"claim":"short text","verdict":"supported|unsupported|opinion"}]}`;
 
 const deepseek: Call = async (messages) => {
     const res = await fetch(API, {
