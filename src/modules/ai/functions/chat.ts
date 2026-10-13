@@ -4,7 +4,15 @@ import { describeAttachments } from "./attachments";
 import { audit, isAudit } from "./audit";
 import { API, MODEL } from "./deepseek";
 import { prepare, sendChunks } from "./discord";
-import { REFUSAL, RULES, leaksSecret, looksLikeJailbreak, reminder, secretLines } from "./guard";
+import {
+    REFUSAL,
+    RULES,
+    leaksSecret,
+    looksLikeJailbreak,
+    reminder,
+    secretLines,
+} from "./guard";
+import { hasDsml, parseDsml, stripDsml } from "./dsml";
 import { callTool, getTools } from "./tools";
 
 const MAX_ROUNDS = 8;
@@ -113,7 +121,8 @@ const answer = async (thread: ThreadChannel, botId: string) => {
         return "";
     });
     const { msgs, users } = await history(thread, botId);
-    const lastUser = [...msgs].reverse().find((m) => m.role == "user")?.content ?? "";
+    const lastUser =
+        [...msgs].reverse().find((m) => m.role == "user")?.content ?? "";
     const messages: Msg[] = [
         { role: "system", content: personality + SUFFIX + RULES },
         ...fit(msgs),
@@ -145,12 +154,36 @@ const answer = async (thread: ThreadChannel, botId: string) => {
             throw new Error(`DeepSeek ${res.status}: ${await res.text()}`);
 
         const msg: Msg = ((await res.json()) as any).choices[0].message;
+        if (hasDsml(msg.content ?? "")) {
+            const parsed = useTools ? parseDsml(msg.content!) : [];
+            msg.tool_calls = parsed.map((c, i) => ({
+                id: `dsml-${round}-${i}`,
+                function: { name: c.name, arguments: JSON.stringify(c.args) },
+            }));
+            msg.content = stripDsml(msg.content!) || null;
+        }
         messages.push(msg);
         if (!useTools || !msg.tool_calls?.length) {
             const text = msg.content ?? "";
+            if (!text.trim() && !useTools)
+                return {
+                    text: "I couldn't finish looking that up. Ask me again in a moment! 🔧",
+                    users,
+                    evidence,
+                    tools: [...used],
+                    blocked: true,
+                };
             if (leaksSecret(text, secrets)) {
-                console.warn("[AI] Blocked a reply that repeated the system prompt");
-                return { text: REFUSAL, users, evidence, tools: [...used], blocked: true };
+                console.warn(
+                    "[AI] Blocked a reply that repeated the system prompt",
+                );
+                return {
+                    text: REFUSAL,
+                    users,
+                    evidence,
+                    tools: [...used],
+                    blocked: true,
+                };
             }
             return { text, users, evidence, tools: [...used], blocked: false };
         }
@@ -171,6 +204,13 @@ ${result}`);
 ${result}`,
             });
         }
+
+        if (round == MAX_ROUNDS - 2)
+            messages.push({
+                role: "system",
+                content:
+                    "No more tool calls are possible. Answer now in plain text with what you have.",
+            });
     }
     return { text: "", users, evidence, tools: [...used], blocked: false };
 };
@@ -190,8 +230,8 @@ export const respond = async (thread: ThreadChannel, replyTo?: Message) => {
         const note = blocked
             ? null
             : await audit(prepare(text, users), evidence, tools).catch(
-            (err) => (console.error("[AI] Audit failed:", err), null),
-        );
+                  (err) => (console.error("[AI] Audit failed:", err), null),
+              );
         if (note)
             await thread
                 .send({
