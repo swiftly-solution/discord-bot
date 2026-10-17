@@ -1,14 +1,15 @@
 import { Message, MessageType, ThreadChannel } from "discord.js";
 import { readFile } from "node:fs/promises";
 import { describeAttachments } from "./attachments";
-import { audit, isAudit } from "./audit";
 import { API, MODEL } from "./deepseek";
-import { prepare, sendChunks } from "./discord";
+import { sendChunks } from "./discord";
 import {
+    DISCLOSURE,
     REFUSAL,
     RULES,
     leaksSecret,
     looksLikeJailbreak,
+    looksRestricted,
     reminder,
     secretLines,
 } from "./guard";
@@ -50,7 +51,7 @@ export const toMsg = async (
     if (m.type != MessageType.Default && m.type != MessageType.Reply)
         return null;
     if (m.author.id == botId) {
-        if (!m.content || m.content == ERROR_TEXT || isAudit(m.content))
+        if (!m.content || m.content == ERROR_TEXT || m.content.startsWith("-# "))
             return null;
         const files = await describeAttachments(m.attachments);
         return {
@@ -126,13 +127,20 @@ const answer = async (thread: ThreadChannel, botId: string) => {
     const messages: Msg[] = [
         { role: "system", content: personality + SUFFIX + RULES },
         ...fit(msgs),
-        { role: "system", content: reminder(looksLikeJailbreak(lastUser)) },
+        {
+            role: "system",
+            content: reminder(
+                looksLikeJailbreak(lastUser),
+                looksRestricted(lastUser),
+            ),
+        },
     ];
     const secrets = [secretLines(personality), SUFFIX, RULES];
     const tools = await getTools();
-    const evidence = msgs
-        .filter((m) => m.role == "user")
-        .map((m) => m.content!);
+    const evidence = [
+        "https://blog.counter-strike.net/server_guidelines/",
+        ...msgs.filter((m) => m.role == "user").map((m) => m.content!),
+    ];
     const used = new Set<string>();
 
     for (let round = 0; round < MAX_ROUNDS; round++) {
@@ -169,9 +177,6 @@ const answer = async (thread: ThreadChannel, botId: string) => {
                 return {
                     text: "I couldn't finish looking that up. Ask me again in a moment! 🔧",
                     users,
-                    evidence,
-                    tools: [...used],
-                    blocked: true,
                 };
             if (leaksSecret(text, secrets)) {
                 console.warn(
@@ -180,12 +185,9 @@ const answer = async (thread: ThreadChannel, botId: string) => {
                 return {
                     text: REFUSAL,
                     users,
-                    evidence,
-                    tools: [...used],
-                    blocked: true,
                 };
             }
-            return { text, users, evidence, tools: [...used], blocked: false };
+            return { text, users };
         }
 
         for (const call of msg.tool_calls) {
@@ -194,9 +196,6 @@ const answer = async (thread: ThreadChannel, botId: string) => {
                 args = JSON.parse(call.function.arguments || "{}");
             } catch {}
             const result = await callTool(call.function.name, args);
-            used.add(call.function.name.split("__")[0]);
-            evidence.push(`${call.function.name} ${JSON.stringify(args)}
-${result}`);
             messages.push({
                 role: "tool",
                 tool_call_id: call.id,
@@ -212,7 +211,7 @@ ${result}`,
                     "No more tool calls are possible. Answer now in plain text with what you have.",
             });
     }
-    return { text: "", users, evidence, tools: [...used], blocked: false };
+    return { text: "", users };
 };
 
 export const respond = async (thread: ThreadChannel, replyTo?: Message) => {
@@ -220,25 +219,16 @@ export const respond = async (thread: ThreadChannel, replyTo?: Message) => {
     typing();
     const timer = setInterval(typing, 8000);
     try {
-        const { text, users, evidence, tools, blocked } = await answer(
-            thread,
-            thread.client.user.id,
-        );
+        const { text, users } = await answer(thread, thread.client.user.id);
         await sendChunks(thread, text, replyTo, users);
 
         // separate small message after the last chunk; never turns a sent answer into an error
-        const note = blocked
-            ? null
-            : await audit(prepare(text, users), evidence, tools).catch(
-                  (err) => (console.error("[AI] Audit failed:", err), null),
-              );
-        if (note)
-            await thread
-                .send({
-                    content: note.slice(0, 1900),
-                    allowedMentions: { parse: [], users: [], roles: [] },
-                })
-                .catch(() => {});
+        await thread
+            .send({
+                content: DISCLOSURE,
+                allowedMentions: { parse: [], users: [], roles: [] },
+            })
+            .catch(() => {});
     } catch (err) {
         console.error("[AI] Failed to answer:", err);
         await thread
